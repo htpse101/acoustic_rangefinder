@@ -1,0 +1,41 @@
+ADC Notes
+
+ADC stores results in 16 bit registers 
+
+channel wise programmable sampling time
+
+DMA request generation during conversion
+
+
+
+
+Channel selection
+	16 channels
+	Regular
+	
+	Injected
+
+	ADC_CHANNEL_0 for IN0
+	
+ADC Clock
+	Analog clock = ADCCLK
+		ADCCLK = APB2 divided by 2/4/6/8
+	Digital Clock
+	
+Timing
+	ADC requires 15 ADC clock cycles to stabalize, after it has been turned on to auto conversion mode.
+
+Scan mode
+	scans multiple channels.
+	
+Channel-wise Programmable Sampling Time
+	Conversion time Tconv = sampling time + 12 cycles
+	ADCCLK = APB2	/2/4/6/8
+	
+Conversion on External Trigger and Trigger polarity
+	It's possible to trigger on a timer rather than using the other things.
+
+	
+Using DMA
+	If data is lost, OVR flag is set and conversions and requests halt
+	

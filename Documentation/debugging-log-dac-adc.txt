@@ -1,0 +1,25 @@
+
+overrun flag is being set
+	what
+		ADC_SR
+			OVR bit is set
+		DMA no longer accepted
+	Why
+		
+	Recovery
+		Clear OCR flag
+		clear DMAEN in used stream
+		Reinitialize DMA and ADC
+
+
+		
+		
+DMA
+	number of transfers saved in this register DMA_SxNTR
+	
+	
+	
+	TEIFx transfre error is set
+	
+	lives in DMA_LISR or DMA_HISR
+	

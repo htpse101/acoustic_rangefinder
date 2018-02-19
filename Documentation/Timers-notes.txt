@@ -1,0 +1,29 @@
+Timers
+
+Master/Slave
+
+TRGI = main trigger input
+ETR = External Trigger pin
+ITR1-4 = Internal trigger inputs
+
+Master 
+	output is TRGO output
+	OC1 is for compare match
+	
+	
+	
+Look up Timer compare
+
+Simultaneous start
+	Tim2 = Master
+	Tim3, Tim4, Tim9 = Slaves (must be in slave mode)
+
+Cascading
+	Update event from rollover = input clock
+	
+	
+Using Tim3 as master
+	ITR2 is internal trigger
+	
+
+	

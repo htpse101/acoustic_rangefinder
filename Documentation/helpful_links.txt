@@ -1,0 +1,27 @@
+Helpful links
+
+
+https://www.carminenoviello.com/2015/06/04/stm32-applications-eclipse-gcc-stcube/
+
+https://www.carminenoviello.com/2016/01/22/getting-started-stm32-nucleo-f746zg/
+
+https://www.carminenoviello.com/2015/07/13/started-stm32f746g-disco/#comment-59910
+
+https://www.element14.com/community/thread/48115/l/how-to-quickly-import-a-stm32cubemx-project
+
+https://www.carminenoviello.com/2015/07/13/started-stm32f746g-disco/
+
+https://www.carminenoviello.com/2014/12/28/setting-gcceclipse-toolchain-stm32nucleo-part-1/
+
+
+all examples
+http://github.com/cnoviello/mastering-stm32.  Carmine Noviello. Mastering STM32 (Kindle Location 2565). leanpub.com. 
+
+
+Note:
+Only 6 breakpoints and 4 watch points
+
+
+CMSIS installation
+https://mcuoneclipse.com/2013/02/14/tutorial-using-the-arm-cmsis-library/
+

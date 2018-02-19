@@ -1,0 +1,16 @@
+Zeros 17  - > 16.99992 ~17
+Center Freq 9747
+
+microphone pin needs to be tied to ground
+
+tie grounds together(they have a long strip)
+
+Brown is +15 V
+Green is -15
+
+
+
+
+
+
+
