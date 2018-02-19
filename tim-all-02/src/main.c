@@ -44,78 +44,147 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define FILE_OUT "C:\\STM32ToolChain\\Downloads\\ctr_out.csv"
-#define FS_OUT "C:\\STM32ToolChain\\Downloads\\mc_fs.csv"
-#define FILE_IN  "C:\\STM32ToolChain\\Downloads\\ctr_in.csv"
+//#include "arm_math.h"
+//#include "arm_const_structs.h"
 
-#define BLOCK_LEN (uint16_t)1024  // this is the received block length. We analyze this data.
+/* USER CODE BEGIN Includes */
+//#define Enable_Timers 0
+
+#define ex_cascade_tim 0
+#define ex_dac_adc 1
+#define BLOCK_LEN (uint16_t)1024  // this is the received block length. We anlyze this data.
 #define MAX_ARRAY_SIZE 2000  // when pulling arrays from files, do not exceed this limit
 
+// Modes  Un-comment out the desired example
 #define EXAMPLE_DAC_ADC
+//#define EXAMPLE_TIMERS  // not used yet
+
+//#define SHOW_DAC_ERRORS
 #define SHOW_ADC_ERRORS
-//	#define HalfADC
 
 // Un-comment one desired sampling frequency
-//#define FS_90kHz
+#define FS_90kHz
+//#define FS_75kHz
+//#define FS_60kHz
+//#define FS_50kHz
 //#define FS_45kHz
-#define REALLY_SLOW
-
+//#define FS_36kHz
+//#define FS_30kHz
+//#define FS_900Hz
+//#define FS_20Hz
 
 #ifdef FS_90kHz  // Cannot light LED this fast
 	#define BASE_PERIOD 9
 	#define BASE_Scaler 0
 	#define FS 90000
 #endif
+#ifdef FS_75kHz
+	#define BASE_PERIOD 11
+	#define BASE_Scaler 0
+	#define FS 75000
+#endif
+#ifdef FS_60kHz  // Cannot light LED this fast
+	#define BASE_PERIOD 14
+	#define BASE_Scaler 0
+	#define FS 60000
+#endif
+#ifdef FS_50kHz
+	#define BASE_PERIOD 17
+	#define BASE_Scaler 0
+	#define FS 50000
+#endif
 #ifdef FS_45kHz
 	#define BASE_PERIOD 19
 	#define BASE_Scaler 0
+	#define SIG_LEN 279
 	#define FS 45000
+	uint16_t signal[SIG_LEN] = {3016,838,552,2424,3380,2303,1031,1532,3103,2785,725,947,3360,3289,1153,1314,2579,1778,1345,3089,3299,976,506,2674,3268,1604,1368,2881,2616,734,1074,3215,3254,1715,1472,1552,1276,2669,3916,1886,153,1940,3021,1711,2053,3151,1659,739,2407,2618,1488,2566,3220,1037,391,2610,3423,2346,1639,1176,1565,3048,2666,977,1995,3428,1434,274,2897,3903,1476,598,2018,2718,2747,2325,899,859,3083,3765,1773,575,1369,2492,3100,2732,1539,1059,1616,2208,2890,3148,1698,284,1501,3493,3138,1375,923,2194,3156,2046,645,1917,3789,2458,442,1561,2991,2001,1712,3032,2363,423,1312,3565,2988,1035,1461,2890,2101,798,2065,3698,2474,747,1333,2215,2244,3005,2965,746,367,2953,3403,1536,1840,2680,1253,1095,3034,2768,1415,2321,2510,696,1270,3643,3175,1244,1084,1689,2395,3132,2119,859,2243,3107,1088,975,3627,3244,456,850,3028,3008,2033,1519,1064,1967,3662,2852,564,705,2587,3277,2671,1667,941,1450,2565,2863,2615,2045,895,875,2841,3801,2096,579,1387,2915,2916,1453,993,2710,3499,1405,323,2409,3427,1836,1561,2651,1765,689,2419,3853,2070,479,1838,3076,1883,1159,2727,3342,1369,452,2140,3092,2455,2345,1859,507,1478,3889,3035,798,1584,2590,1408,1738,3386,2368,966,2108,2332,1065,2225,3833,2107,355,1474,2710,2812,2571,1444,974,2616,2921,1038,1625,3732,2240,0,1782,3814,2516,1114,1390,1875,2752,3275,1620,206,1813,3663,2979,1495,977,1374,2468,3152,2517,1663,1318,1205,2098,3568};
+	uint16_t rx_sig[BLOCK_LEN];
+	uint16_t tx_sig[BLOCK_LEN];
+
+//	volatile uint16_t* blockA[BLOCK_LEN];
+
+	volatile uint16_t blockA[1024];
+	volatile uint16_t blockB[BLOCK_LEN];
 #endif
-#ifdef REALLY_SLOW
+#ifdef FS_36kHz
+	#define BASE_PERIOD 24
+	#define BASE_Scaler 0
+	#define FS 36000
+#endif
+#ifdef FS_30kHz
+	#define BASE_PERIOD 29
+	#define BASE_Scaler 0
+	#define FS 30000
+#endif
+#ifdef FS_900Hz  // confirmed 23 Jan 2018 - closer to 909 Hz
 	#define BASE_PERIOD 999
-	#define BASE_Scaler 2000
-	#define FS 1 // or just something slow
+	#define BASE_Scaler 0
+	#define FS 900
+#endif
+#ifdef FS_20Hz  // confirmed 23 Jan 2018
+	#define BASE_PERIOD 999
+	#define BASE_Scaler 44
+	#define FS 20
 #endif
 
 // mode selection
+#ifdef EXAMPLE_DAC_ADC
+	// DAC out is pin pa4
+	// ADC in is pin pa0
+	#define Samples 10  //200
+	#define PI 3.14159
+	#define RecLen 2500
+	#define FILE_OUT "C:\\STM32ToolChain\\Downloads\\ctr_out.csv"
+	#define FS_OUT "C:\\STM32ToolChain\\Downloads\\mc_fs.csv"
+	#define FILE_IN  "C:\\STM32ToolChain\\Downloads\\ctr_in.csv"
+	#define ENABLE_DAC_ADC  // call whenever you want the DAC and ADC to work
+//	#define HalfADC
+	int16_t IV[Samples], value;
+#else
+	#define FILE_OUT "C:\\STM32ToolChain\\Downloads\\test_ctr_out.csv"
+#endif
 
-#define Samples 10  //200
-#define PI 3.14159
-#define RecLen 5
-
-#define ENABLE_DAC_ADC  // call whenever you want the DAC and ADC to work
-int16_t IV[Samples], value;
-
+/* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
 ADC_HandleTypeDef hadc1;
 DMA_HandleTypeDef hdma_adc1;
+
 DAC_HandleTypeDef hdac;
 DMA_HandleTypeDef hdma_dac1;
+
 TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim5;
 TIM_HandleTypeDef htim8;
 
+volatile uint32_t rec_len = RecLen;
+volatile uint16_t rawValues[RecLen];
+
+// This may not be the best way to switch signals, but it's an idea.
+
+volatile uint16_t rawValues[RecLen];
+volatile uint16_t array_oBuffA[MAX_ARRAY_SIZE];
+volatile uint32_t len_oBuffA;  // for output signal A
+volatile uint16_t array_oBuffB[MAX_ARRAY_SIZE];
+volatile uint32_t len_oBuffB;  // for output signal B
+
+volatile uint16_t array_iBuffA[MAX_ARRAY_SIZE];
+volatile uint16_t array_iBuffB[MAX_ARRAY_SIZE];
+volatile uint16_t* array_iActive;  // toggle between input buffers and this is the active one
+volatile uint32_t len_iActive;	// length of active array (
+volatile uint16_t active_iBuff = 0; // 0 = A, 1 = B; // toggle this to switch
+// end section that may not be best idea
 
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
 struct SIG {
+//	uint16_t len;
 	uint32_t len;
-	uint16_t cur_idx;
 	uint16_t sig[MAX_ARRAY_SIZE];
 };
-struct ADC_MGR {
-	int cur_idx;
-	int enable_adc;
-
-};
 volatile struct SIG matlab_signal;
-volatile struct SIG rec_sig;
-volatile struct SIG rec_sigA;
-volatile struct SIG rec_sigB;
-volatile struct SIG act_sig;
-
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -129,6 +198,7 @@ static void MX_TIM3_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_DAC_Init(void);
 static void init_hardware(void);
+//void print_csv_data(uint16_t* pt_sig, uint16_t sig_len);
 void print_csv_data(uint16_t* pt_sig, uint32_t sig_len);
 void print_csv_fs();  // prints out the sampling frequency for relating the data to the final results
 void HAL_DAC_ErrorCallbackCh1(DAC_HandleTypeDef *hdac);
@@ -140,19 +210,12 @@ void place_signal(uint16_t* pt_block, uint16_t block_len, uint16_t* pt_sig, uint
 void error();
 void fliplr(uint16_t* ref_sig, uint16_t* new_sig, uint16_t sig_len);
 void copy_2butterfly(uint16_t* pt_real_array, uint16_t r_len, uint16_t* pt_cpx_array);
-
+void example_dac_adc();
 void fetch_matlab_input(struct SIG *sig);  // Uploads the recent signal structure from matlab
-
+//void run_DAC(uint16_t* pt_sig, uint16_t len_sig);
 void run_DAC(uint16_t* pt_sig, uint32_t len_sig);
-
-void run_ADC(struct SIG *sig);
+void run_ADC(uint16_t* pt_sig, uint32_t len_sig);
 void recover_ADC_Error();
-void ADC_ConvCpltCallback();
-void fft_example();
-int btn_pushed = 0;  // used for software button debouncing.
-int ENABLE_adc = 0;  // A timer checks this and if this is 1, then it the adc will read.
-
-volatile uint16_t active_iBuff = 0; // 0 = A, 1 = B; // toggle this to switch
 
 
 extern void initialise_monitor_handles();
@@ -163,123 +226,382 @@ int main(void)
   fetch_matlab_input(&matlab_signal);
   init_hardware();
   initialise_monitor_handles();
+//  struct SIG matlab_signal;
 
-  
+
+
+  // confirm using the DMA with ADC and DAC
+#ifdef EXAMPLE_DAC_ADC
+  example_dac_adc();
+#endif
+
+  // then get serial communication working with usart, I guess
+
+#ifdef FS_45kHz
+
+  //adc dac test
+  /*
+  arm_fill_q15(0, rx_sig, BLOCK_LEN);
+  arm_fill_q15(0, tx_sig, BLOCK_LEN);
+  uint16_t idx_loc = 250;
+  place_signal(tx_sig, BLOCK_LEN, signal, SIG_LEN, idx_loc);
+  */
+
+/*
+  // flip reference signal
+  uint16_t new_signal[SIG_LEN];
+  fliplr(signal, new_signal, SIG_LEN);
+
+  // prepare ADC signal
+  uint16_t ADC_LEN = BLOCK_LEN - SIG_LEN;
+  uint16_t blockTX[ADC_LEN];
+  arm_fill_q15(0, blockTX, ADC_LEN);
+  uint16_t idx_loc = 250;
+  place_signal(blockTX, ADC_LEN, signal, SIG_LEN, idx_loc);
+
+/*
+  // prepare arrays
+  uint16_t ref_sig_len = SIG_LEN + ADC_LEN;
+  uint16_t real_num_samples = BLOCK_LEN - 1 + 1;
+  uint16_t* pt_final_res[real_num_samples];
+  uint32_t cpx_num_samples = real_num_samples*2;
+  uint16_t* pt_ref_sig_cpx[cpx_num_samples];
+  uint16_t* pt_cap_sig_cpx[cpx_num_samples];
+  uint16_t* pt_res_fft[cpx_num_samples];
+  arm_fill_q15(0, pt_ref_sig_cpx, cpx_num_samples);
+  arm_fill_q15(0, pt_cap_sig_cpx, cpx_num_samples);
+  arm_fill_q15(0, pt_res_fft, cpx_num_samples);
+  arm_fill_q15(0, pt_final_res, real_num_samples);
+  copy_2butterfly(new_signal, SIG_LEN, pt_ref_sig_cpx);
+
+//  print_csv_data(pt_ref_sig_cpx, cpx_num_samples);  // test code
+
+  copy_2butterfly(blockTX, ADC_LEN, pt_cap_sig_cpx);
+//  print_csv_data(pt_cap_sig_cpx, cpx_num_samples);  // test code
+
+
+
+  // Perform FFT
+  uint8_t ifftFlag = 1;
+  uint8_t bitReverseFlag = 0;
+  arm_cfft_q15(&arm_cfft_sR_q15_len1024, pt_ref_sig_cpx, !ifftFlag, bitReverseFlag);
+//  print_csv_data(pt_ref_sig_cpx, cpx_num_samples);
+
+  arm_cfft_q15(&arm_cfft_sR_q15_len1024, pt_cap_sig_cpx, !ifftFlag, bitReverseFlag);
+//  print_csv_data(pt_cap_sig_cpx, cpx_num_samples);
+
+  // multiply results
+  arm_cmplx_mult_cmplx_q15(pt_ref_sig_cpx, pt_cap_sig_cpx, pt_res_fft, cpx_num_samples);
+
+  // do inverse FFT
+  arm_cfft_q15(&arm_cfft_sR_q15_len1024, pt_res_fft, ifftFlag, bitReverseFlag);
+//  print_csv_data(pt_res_fft, cpx_num_samples);
+
+  //convert to real
+  copy_frombutterfly(pt_final_res, real_num_samples, pt_res_fft);
+//  print_csv_data(pt_final_res, real_num_samples);
+
+*/
+  // view results
+//  volatile uint32_t* max_val;
+//  volatile uint32_t* max_idx;
+//  arm_max_q15(pt_final_res, real_num_samples, max_val, max_idx);
+//  printf("Max val: %d\n", *max_val);
+//  printf("Max idx: %d\n", *max_idx);
+//  print_csv_data(pt_final_res, real_num_samples);
+
+//
+//  uint16_t pt_sig[10] = {1,2,3,4,5,6,7,8,9,10};
+//  uint16_t new_sig[10] = {0,0,0,0,0,0,0,0,0,0};
+//  uint16_t blk[10] = {0,0,0,0,0,0,0,0,0,0};
+//
+//
+//  fliplr(pt_sig, new_sig, 10);
+//
+//
+//  fliplr(signal, new_signal, SIG_LEN);
+//  arm_fill_q15(0, blockA, BLOCK_LEN);
+//
+////  uint16_t idx_loc = 250;
+//  place_signal(blockTX, BLOCK_LEN, signal, SIG_LEN, idx_loc);
+//  place_signal(blockTX, BLOCK_LEN, pt_sig, 10, idx_loc);
+//
+//  uint16_t pt_resolved[2*BLOCK_LEN - 1];
+//  arm_fill_q15(0, pt_resolved, 2*BLOCK_LEN - 1);
+//  uint32_t res_size = 2*BLOCK_LEN - 1;
+//  volatile uint32_t* max_val;
+//  volatile uint32_t* max_idx;
+//
+////  arm_correlate_q15(new_sig, 10, blockTX, BLOCK_LEN, pt_resolved);
+//  arm_conv_q15(new_sig, 10, blockTX, BLOCK_LEN, pt_resolved);
+//
+//  arm_max_q15(pt_resolved, res_size, max_val, max_idx);
+//  printf("Max val: %d\n", *max_val);
+//  printf("Max idx: %d\n", *max_idx);
+//
+//
+//  print_csv_data(pt_resolved, 2*BLOCK_LEN - 1);
+  while(1){}
+#endif
+
+//  test_file_writing();
+
   while (1)
   {
   }
 }
 
+void fetch_matlab_input(struct SIG *sig){
+	// Fetches the recent signal structure from matlab
+	FILE *fd = fopen(FILE_IN, "r");
 
-/**********************************************************************************************************************************************************************************************************************************
- * Other functions
- ***********************************************************************************************************************************************************************************************************************************/
+	//  int numarray[93];
+//	  uint16_t i_array_len;
+	  fscanf(fd, "%u", &sig->len);
+
+
+	  for (uint16_t i = 0; i < sig->len; i++){
+		  fscanf(fd, ",%hu", &sig->sig[i]);
+	  }
+
+//	  print_csv_data(sig->sig, sig->len);  // checks to make sure this works
+	  // this works for dynamically allocating the right amount of memory
+	  //	  uint16_t* numarray;
+	  //	  numarray = (uint16_t*) malloc(i_array_len * sizeof(uint16_t));
+	  //	  for (uint16_t i = 0; i < i_array_len; i++){
+	  //		  fscanf(fd, ",%u", &numarray[i]);
+	  //	  }
+	  //	  print_csv_data(numarray, i_array_len);
+	  //	  free(numarray);
+
+}
+
+void example_dac_adc(){
+	print_csv_fs();
+
+
+	for (uint32_t i = 0; i < rec_len; i++){
+		rawValues[i] = 0;
+	}
+	// DAC
+//	int16_t IV[Samples], value;
+	for (uint16_t i = 0; i < Samples; i++){
+		value = (uint16_t) rint(2048*(sinf(((2*PI)/Samples)*i)+1));
+		IV[i] = value < 4096 ? value : 4095;
+	}
+//	HAL_DAC_Start_DMA(&hdac, DAC_CHANNEL_1, (uint32_t*) &matlab_signal.sig, &matlab_signal.len, DAC_ALIGN_12B_R);
+//	HAL_ADC_Start_DMA(&hadc1, (uint32_t*) rawValues, rec_len);
 
 
 
+//	HAL_DAC_Start_DMA(&hdac, DAC_CHANNEL_1, (uint32_t*) IV, Samples, DAC_ALIGN_12B_R);
+//	HAL_ADC_Start_DMA(&hadc1, (uint32_t*) rawValues, rec_len);
+}
 
 
+void copy_2butterfly(uint16_t* pt_real_array, uint16_t r_len, uint16_t* pt_cpx_array){
+	// converts a real array into a complex array. the cpx_array must be at least 2x the len of the real array
+	for (uint16_t i = 0; i < r_len; i++){
+		pt_cpx_array[2*i] = pt_real_array[i];
+	}
+}
+void copy_frombutterfly(uint16_t* pt_real_array, uint16_t r_len, uint16_t* pt_cpx_array){
+	// converts a complex array into a real array
+	for (uint16_t i = 0; i < r_len; i++){
+		pt_real_array[i] = pt_cpx_array[i*2];
+	}
+}
 
-/**********************************************************************************************************************************************************************************************************************************
- *ADC and DAC functions 							// DAC out is pin pa4 // ADC in is pin pa0
- ***********************************************************************************************************************************************************************************************************************************/
 
-// Put arrays into run_DAC and run_ADC to put data to DAC or fill ADC
+void fliplr(uint16_t* ref_sig, uint16_t* new_sig, uint16_t sig_len){
+	// This function flips an array from left to right
+	for (uint16_t i = 0; i < sig_len; i++){
+		new_sig[sig_len - i - 1] = ref_sig[i]; // -1 for the fact that an array of len 5 has only idx 4.
+	}
+}
+
+void place_signal(uint16_t* pt_block, uint16_t block_len, uint16_t* pt_sig, uint16_t sig_len, uint16_t idx_loc){
+	// This function embeds an array inside another array starting at a given idx
+	// check, ensure that there is enough space to embed the signal
+	// Tested
+	if (idx_loc + sig_len < block_len){
+		for (uint16_t i = 0; i < sig_len; i++){
+			pt_block[i+idx_loc] = pt_sig[i];
+		}
+	} else{
+		error();
+	}
+}
+
+void print_csv_data(uint16_t* pt_sig, uint32_t sig_len){
+	// tested
+#ifdef OS_USE_SEMIHOSTING
+	FILE *fd = fopen(FILE_OUT, "w+");
+	fprintf(fd, "%d", pt_sig[0]);  // print first digit
+	for (uint32_t i = 1; i < sig_len; i++){
+		fprintf(fd, ",%d", pt_sig[i]);  // print successive digits
+	}
+
+	fclose(fd);
+#endif
+}
+
+void print_csv_fs(){
+	//
+#ifdef OS_USE_SEMIHOSTING
+	FILE *fd = fopen(FS_OUT, "w+");
+	fprintf(fd, "%d", FS);  // print first digit
+	fclose(fd);
+#endif
+}
+
+
+void test_file_writing(){
+#ifdef ex_log_msg
+	  char camessage[50] = "This is a message\nLine two";
+	#ifdef OS_USE_TRACE_SEMIHOSTING_DEBUG
+	  trace_printf("using trace_printf\n");
+	#endif
+	#ifdef OS_USE_SEMIHOSTING
+	  printf("Does this work? \n");
+	  printf("or this? \r\n");
+	  FILE *fd = fopen("C:\\STM32ToolChain\\Downloads\\junk.txt", "w+");
+	//  FILE *fd = fopen("C:/STM32ToolChain/Downloads/junk.txt", "w+");
+	  fwrite(camessage, sizeof(char), strlen(camessage), fd);
+	  fclose(fd);
+	#endif
+#endif
+}
+
 void run_DAC(uint16_t* pt_sig, uint32_t len_sig){
-	//consider converting this to interrupt mode to help prevent issues; however, this does work.
 	HAL_DAC_Stop_DMA(&hdac, DAC_CHANNEL_1);  // you have to call STOP before running it again
 	HAL_DAC_Start_DMA(&hdac, DAC_CHANNEL_1, (uint32_t*) pt_sig, len_sig, DAC_ALIGN_12B_R);
 }
 
-void run_ADC(struct SIG *sig){
-//	act_sig = sig;
-//	act_sig->cur_idx = 0;
-//	ENABLE_adc = 1;
-}
-
-// This function is called when DAC is done
-void HAL_DAC_ConvCpltCallbackCh1(DAC_HandleTypeDef* hdac){
-	HAL_GPIO_TogglePin(GPIOB, LD1_Pin);  // this is not necessary, it just gives feedback to say the dac finished.
-
-	// Add code here if you want to execute code as soon as the DAC has finished sending a signal.
-}
-// This function is called when ADC is done
-void ADC_ConvCpltCallback(){
-	// This is the function that is called when the array has been fully filled
-	HAL_ADC_Stop_IT(&hadc1); // must stop ADC before next clock cycle. If you break before this executes, an overrun error will happen.
-	ENABLE_adc = 0;
-	HAL_GPIO_TogglePin(GPIOB, LD1_Pin);
-	print_csv_data(act_sig.sig, act_sig.len);
-	btn_pushed = 0;
-}
-
-// Don't use this function except to modify sampling behavior
-void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc){
-	// Don't put any breakpoints in this function or an overrun error will happen. Must call HAL_ADC_Stop_IT() before stopping. Pausing code during debugging is considered stopping and trigger error if in this function.
-	// use ADC_ConvCpltCallback to execute code when adc is done
-	// It is okay to modify this function, just recognize the error restriction.
-	HAL_GPIO_TogglePin(GPIOB, LD2_Pin);
-	if (act_sig.cur_idx < act_sig.len){
-		act_sig.sig[act_sig.cur_idx] = HAL_ADC_GetValue(&hadc1);
-		act_sig.cur_idx++;
-	} else{
-		ADC_ConvCpltCallback();
+void run_ADC(uint16_t* pt_sig, uint32_t len_sig){
+//	HAL_ADC_Stop_DMA(&hadc1);  // This is being done in the conversion complete call back
+	if (hadc1.State != HAL_ADC_STATE_REG_BUSY){
+		HAL_ADC_Start_DMA(&hadc1, (uint32_t*) pt_sig, len_sig);
 	}
 }
 
+//void run_DAC(uint16_t* pt_sig, uint16_t len_sig){
+//	HAL_DAC_Stop_DMA(&hdac, DAC_CHANNEL_2);  // you have to call STOP before running it again
+//	HAL_DAC_Start_DMA(&hdac, DAC_CHANNEL_1, (uint32_t*) pt_sig, len_sig, DAC_ALIGN_12B_R);
+//}
 
-/**********************************************************************************************************************************************************************************************************************************
- *	User button
- ***********************************************************************************************************************************************************************************************************************************/
-// This function is called when the user button is pushed. It may not be properly debounced, so it could get called multiple times in rapid succession. btn_pushed is to protect against this.
 void EXTI15_10_IRQHandler(void){
 	// Whenever the user button is pushed, this function is called. It is the event handler for that interrupt
-	if (btn_pushed == 0){
-		btn_pushed = 1;
-		rec_sigA.len = 5;
-		if (active_iBuff == 0){
-			rec_sigA.len = 5;
-			run_ADC(&rec_sigA);
-		} else{
-			rec_sigB.len = 10;
-			run_ADC(&rec_sigB);
-		}
+
+//	__HAL_GPIO_EXTI_CLEAR_IT(USER_Btn_Pin);  // must clear an interrupt once it has entered the call back function (IRQHandler)
+	run_ADC(rawValues, rec_len);
+	uint32_t sig_len = matlab_signal.len;
+	run_DAC(&matlab_signal.sig, sig_len);
+//	HAL_Delay(10);
+	if(HAL_ADC_GetState(&hadc1) == HAL_ADC_STATE_READY){
+//		fetch_matlab_input(&matlab_signal);  // fetch new signal
+		#ifdef FS_45kHz
+//			fetch_matlab_input(&matlab_signal);  // fetch new signal
+			// start ADC and DAC for one cycle
+			HAL_DAC_Start_DMA(&hdac, DAC_CHANNEL_1, (uint32_t*) IV, Samples, DAC_ALIGN_12B_R);
+			run_DAC(&matlab_signal.sig, &matlab_signal.len);
+
+		//	run_DAC(&matlab_signal.sig, 16);
+		//	HAL_DAC_Stop_DMA(&hdac, DAC_CHANNEL_2);
+		//	HAL_DAC_Start_DMA(&hdac, DAC_CHANNEL_1, (uint32_t*) &matlab_signal.sig, &matlab_signal.len, DAC_ALIGN_12B_R);
+
+		//	HAL_ADC_Stop_DMA(&hadc1);
+		//	HAL_ADC_Start_DMA(&hadc1, (uint32_t*) rawValues, rec_len);
+
+			HAL_DAC_Stop_DMA(&hdac, DAC_CHANNEL_2);
+			HAL_DAC_Start_DMA(&hdac, DAC_CHANNEL_2, (uint32_t*) tx_sig, BLOCK_LEN, DAC_ALIGN_12B_R);
+		//
+		//	HAL_ADC_Stop_DMA(&hadc1);
+		//	HAL_ADC_Start_DMA(&hadc1, (uint32_t*) rx_sig, BLOCK_LEN);
+		#endif
+//			fetch_matlab_input(&matlab_signal);  // fetch new signal
+
+
+			//			run_ADC(rawValues, rec_len);
+
+			//			HAL_ADC_Stop_DMA(&hadc1);
+//			HAL_ADC_Start_DMA(&hadc1, (uint32_t*) rawValues, rec_len);
 	}
-	__HAL_GPIO_EXTI_CLEAR_IT(USER_Btn_Pin);  // must clear an interrupt once it has entered the call back function (IRQHandler), or it won't call this again.
+	__HAL_GPIO_EXTI_CLEAR_IT(USER_Btn_Pin);  // must clear an interrupt once it has entered the call back function (IRQHandler)
+
+//	HAL_DAC_Start_DMA(&hdac, DAC_CHANNEL_1, (uint32_t*) IV, Samples, DAC_ALIGN_12B_R);
+
+//	HAL_ADC_Stop_DMA(&hadc1);
+//	HAL_ADC_Start_DMA(&hadc1, (uint32_t*) rawValues, rec_len);
+//		HAL_DAC_Stop_DMA(&hdac, DAC_CHANNEL_2);
+//		HAL_DAC_Start_DMA(&hdac, DAC_CHANNEL_2, (uint32_t*) dac_mod_sig, Len, DAC_ALIGN_12B_R);
+//	zonk if cannot find their convenience function:
+//	g_DMA_S2CR_copy = hdac->DMA_Handle2->Instance->CR;
+//	}
 }
 
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc){
 
-/**********************************************************************************************************************************************************************************************************************************
- *	Timer overrun callback functions
- ***********************************************************************************************************************************************************************************************************************************/
-// Test setup for master timer
-void TIM2_IRQHandler(void){ // Master Timer
-	HAL_TIM_IRQHandler(&htim2);
-}
-
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
-	// This function is called if an timer overflow interrupt is called. I think it needs to be in IT mode for it to call this function.
-}
-
-void TIM8_UP_TIM13_IRQHandler(void){
-	HAL_TIM_IRQHandler(&htim8);
-}
-
-void TIM5_IRQHandler(void){
-	HAL_TIM_IRQHandler(&htim5);
-}
-
-void TIM3_IRQHandler(void){
-	HAL_TIM_IRQHandler(&htim3);
-	if (ENABLE_adc == 1){
-		HAL_ADC_Start_IT(&hadc1);
+#ifdef EXAMPLE_DAC_ADC
+	if (hadc->Instance == ADC1){
+		HAL_ADC_Stop_DMA(&hadc1);
+		HAL_GPIO_TogglePin(GPIOB, LD2_Pin);
+//		print_csv_data(rawValues, RecLen);
+		// write to the file output here.
 	}
+#endif
+}
+
+void HAL_ADC_ErrorCallback(ADC_HandleTypeDef *hadc){
+#ifdef SHOW_ADC_ERRORS
+	HAL_GPIO_WritePin(GPIOB, LD3_Pin, GPIO_PIN_SET);  // debugging this will cause an overrun error.
+	print_csv_data(rawValues, RecLen);
+	recover_ADC_Error();
+#endif
+}
+
+void recover_ADC_Error(){
+
+	hadc1.DMA_Handle->State= HAL_DMA_STATE_BUSY; //HAL_DMA_STATE_READY;
+	HAL_ADC_Stop_DMA(&hadc1);
+
+	//	hdma->State= HAL_DMA_STATE_READY
+
+//	hdma->Instance->CR  &= ~(DMA_IT_TC | DMA_IT_TE | DMA_IT_DME);
+//	    hdma->Instance->FCR &= ~(DMA_IT_FE);
+////	DMA_ClearFlag(DMA2_Stream0, DMA_FLAG_FEIF0_4|DMA_FLAG_DMEIF0_4|DMA_FLAG_TEIF0_4|DMA_FLAG_HTIF0_4|DMA_FLAG_TCIF0_4);
+////	DMA_Cmd(DMA2_Stream0, DISABLE);while (DMA2_Stream0->CR & DMA_SxCR_EN);
+
+	//	HAL_ADC_Stop_DMA(&hadc1);
+
+	//	HAL_DAC_Stop_DMA()
+//	HAL_DMA_DeInit()
+//	uint32_t tmpreg = (uint32_t)&hdac->Instance->DHR12R2;
+//
+//	uint32_t sig_len;
+//	arm_q15_to_q31(&matlab_signal.len, sig_len);
+//
+//	DMA_SetConfig(hdac->DMA_Handle1, tmpreg, (uint32_t*)&matlab_signal.sig, sig_len);
 }
 
 
-/**********************************************************************************************************************************************************************************************************************************
- *	Hardware configuration
- ***********************************************************************************************************************************************************************************************************************************/
+void HAL_DAC_ErrorCallbackCh1(DAC_HandleTypeDef *hdac){
+#ifdef SHOW_DAC_ERRORS
+	HAL_GPIO_WritePin(GPIOB, LD3_Pin, GPIO_PIN_SET);  // This happens, but with how things are reset, the system is working.
+	HAL_DAC_Stop_DMA(&hdac, DAC_CHANNEL_1);  // this function should clear the error
+#endif
+}
+
+
+void HAL_DAC_ConvCpltCallbackCh1(DAC_HandleTypeDef* hdac){
+	HAL_GPIO_TogglePin(GPIOB, LD1_Pin);
+//	btn_pushed = 0;
+//	_error(); // The DAC or DMA is not properly being reset. Do this, then delete this line
+//	HAL_DMA_Init(&hdac);
+//	MX_DMA_Init();
+//	HAL_DAC_Stop_DMA(&hdac, DAC_CHANNEL_2);
+}
+
 
 static void init_hardware(void){
 	HAL_Init();
@@ -294,6 +616,12 @@ static void init_hardware(void){
 	MX_ADC1_Init();
 	MX_DAC_Init();
 
+	// Master timer
+//	HAL_NVIC_SetPriority(TIM2_IRQn, 0, 0);
+//	HAL_NVIC_EnableIRQ(TIM2_IRQn);
+
+	// confirm that each child timer works as expected
+
 	HAL_NVIC_SetPriority(TIM8_UP_TIM13_IRQn, 0, 0);
 	HAL_NVIC_SetPriority(TIM5_IRQn, 0, 0);
 	HAL_NVIC_SetPriority(TIM3_IRQn, 0, 0);
@@ -302,17 +630,69 @@ static void init_hardware(void){
 	HAL_NVIC_EnableIRQ(TIM5_IRQn);
 	HAL_NVIC_EnableIRQ(TIM3_IRQn);
 
-	HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);  // user push button. This enables it.
+	HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);  // user push button
 
-#ifdef ENABLE_DAC_ADC
 	// start children timers first, then master
-	//child timers
+
+
+//	HAL_TIM_Base_Start(&htim8);
+//	HAL_TIM_Base_Start_IT(&htim5);
+//	HAL_TIM_Base_Start_IT(&htim3);
+//
+//	HAL_TIM_Base_Start_IT(&htim2);  // start master timer last
+
 	HAL_TIM_Base_Start(&htim8);
 //	HAL_TIM_Base_Start_IT(&htim5);
-	HAL_TIM_Base_Start_IT(&htim3);
-	// master timer
+//	HAL_TIM_Base_Start_IT(&htim3);
+
 	HAL_TIM_Base_Start_IT(&htim2);  // start master timer last
+
+//	// Sets up all timers in interrupt mode. Will not run ADC or DAC
+//	HAL_TIM_Base_Start_IT(&htim8);
+//	HAL_TIM_Base_Start_IT(&htim5);
+//	HAL_TIM_Base_Start_IT(&htim3);
+//
+//	HAL_TIM_Base_Start_IT(&htim2);  // start master timer last
+//#else
+
+
+}
+
+// Test setup for master timer
+void TIM2_IRQHandler(void){ // Master Timer
+	HAL_TIM_IRQHandler(&htim2);
+}
+
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
+
+#ifdef EXAMPLE_TIMERS
+	if (htim->Instance == TIM2){  //		 Master Timer
+		HAL_GPIO_TogglePin(GPIOB, LD1_Pin);
+	} else if (htim->Instance == TIM8){
+		HAL_GPIO_TogglePin(GPIOB, LD1_Pin);
+	} else if (htim->Instance == TIM5){
+		HAL_GPIO_TogglePin(GPIOB, LD2_Pin);
+	} else if (htim->Instance == TIM3){
+		HAL_GPIO_TogglePin(GPIOB, LD3_Pin);
+	}
+#else
+
 #endif
+}
+
+
+// Test part 2. Confirm that all child timers work
+
+void TIM8_UP_TIM13_IRQHandler(void){
+	HAL_TIM_IRQHandler(&htim8);
+}
+
+void TIM5_IRQHandler(void){
+	HAL_TIM_IRQHandler(&htim5);
+}
+
+void TIM3_IRQHandler(void){
+	HAL_TIM_IRQHandler(&htim3);
 }
 
 
@@ -382,7 +762,9 @@ void SystemClock_Config(void)
 /* ADC1 init function */
 static void MX_ADC1_Init(void)
 {
+
   ADC_ChannelConfTypeDef sConfig;
+
     /**Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion) 
     */
   hadc1.Instance = ADC1;
@@ -392,45 +774,55 @@ static void MX_ADC1_Init(void)
   hadc1.Init.ContinuousConvMode = DISABLE;
   hadc1.Init.DiscontinuousConvMode = DISABLE;
 #ifdef HalfADC
-  hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_RISING;  //Samples at half the DAC rate
+  hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_RISING; //Samples at half the DAC rate
 #else
-  hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_RISINGFALLING;
+  hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_RISINGFALLING; //ADC_EXTERNALTRIGCONVEDGE_RISING;
 #endif
-  hadc1.Init.ExternalTrigConv = ADC_EXTERNALTRIGCONV_T8_TRGO;
+  hadc1.Init.ExternalTrigConv = ADC_EXTERNALTRIGCONV_T8_TRGO; //ADC_SOFTWARE_START; //ADC_EXTERNALTRIGCONV_T8_TRGO;
   hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
   hadc1.Init.NbrOfConversion = 1;
-  hadc1.Init.DMAContinuousRequests = DISABLE;
-  hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;  // use end of conversion. see pg89 of description of stm32f7 HAL
-  if (HAL_ADC_Init(&hadc1) != HAL_OK){
+  hadc1.Init.DMAContinuousRequests = DISABLE;  // ENABLE;
+  hadc1.Init.EOCSelection = ADC_EOC_SEQ_CONV; //ADC_EOC_SINGLE_CONV;  //ADC_EOC_SEQ_CONV; //ADC_EOC_SINGLE_CONV; //ADC_EOC_SINGLE_CONV;
+  if (HAL_ADC_Init(&hadc1) != HAL_OK)
+  {
     _Error_Handler(__FILE__, __LINE__);
   }
+
     /**Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time. 
     */
   sConfig.Channel = ADC_CHANNEL_0;
   sConfig.Rank = 1;
   sConfig.SamplingTime = ADC_SAMPLETIME_3CYCLES; //ADC_SAMPLETIME_3CYCLES; //ADC_SAMPLETIME_480CYCLES; //ADC_SAMPLETIME_28CYCLES;
-  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK){
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+  {
     _Error_Handler(__FILE__, __LINE__);
   }
+
 }
 
 /* DAC init function */
 static void MX_DAC_Init(void)
 {
+
   DAC_ChannelConfTypeDef sConfig;
+
     /**DAC Initialization 
     */
   hdac.Instance = DAC;
-  if (HAL_DAC_Init(&hdac) != HAL_OK){
+  if (HAL_DAC_Init(&hdac) != HAL_OK)
+  {
     _Error_Handler(__FILE__, __LINE__);
   }
+
     /**DAC channel OUT1 config 
     */
   sConfig.DAC_Trigger = DAC_TRIGGER_T8_TRGO;
   sConfig.DAC_OutputBuffer = DAC_OUTPUTBUFFER_ENABLE;
-  if (HAL_DAC_ConfigChannel(&hdac, &sConfig, DAC_CHANNEL_1) != HAL_OK){
+  if (HAL_DAC_ConfigChannel(&hdac, &sConfig, DAC_CHANNEL_1) != HAL_OK)
+  {
     _Error_Handler(__FILE__, __LINE__);
   }
+
 }
 
 /* TIM2 init function */
@@ -443,7 +835,7 @@ static void MX_TIM2_Init(void)
   htim2.Instance = TIM2;
   htim2.Init.Prescaler = 0;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 14;  // important number! 14 and 0 were chosen to help set the sampling frequency.
+  htim2.Init.Period = 14;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
@@ -474,7 +866,7 @@ static void MX_TIM3_Init(void)
   TIM_MasterConfigTypeDef sMasterConfig;
 
   htim3.Instance = TIM3;
-  htim3.Init.Prescaler = BASE_Scaler;
+  htim3.Init.Prescaler = 2;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim3.Init.Period = BASE_PERIOD;
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
@@ -542,9 +934,9 @@ static void MX_TIM8_Init(void)
   TIM_MasterConfigTypeDef sMasterConfig;
 
   htim8.Instance = TIM8;
-  htim8.Init.Prescaler = 1000; // BASE_Scaler;
+  htim8.Init.Prescaler = BASE_Scaler;
   htim8.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim8.Init.Period = 1000; // BASE_PERIOD;
+  htim8.Init.Period = BASE_PERIOD;
   htim8.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim8.Init.RepetitionCounter = 0;
   htim8.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
@@ -713,237 +1105,7 @@ static void MX_GPIO_Init(void)
 
 }
 
-
-/**********************************************************************************************************************************************************************************************************************************
- *	General support functions
- ***********************************************************************************************************************************************************************************************************************************/
-void fetch_matlab_input(struct SIG *sig){
-	// Fetches the recent signal structure from matlab and puts it inside the passed in sig
-	print_csv_fs();  // make sure matlab knows the most recent sampling frequency
-	FILE *fd = fopen(FILE_IN, "r");
-	fscanf(fd, "%u", &sig->len);
-	for (uint16_t i = 0; i < sig->len; i++){
-		fscanf(fd, ",%hu", &sig->sig[i]);
-	}
-}
-
-void print_csv_data(uint16_t* pt_sig, uint32_t sig_len){
-	// tested
-	// you can copy and use this in other ways to write to other files. You could even pass in a file obeject of string that represents the file name instead of hard coding it
-#ifdef OS_USE_SEMIHOSTING
-	FILE *fd = fopen(FILE_OUT, "w+");
-	fprintf(fd, "%d", pt_sig[0]);  // print first digit
-	for (uint32_t i = 1; i < sig_len; i++){
-		fprintf(fd, ",%d", pt_sig[i]);  // print successive digits
-	}
-
-	fclose(fd);
-#endif
-}
-
-void print_csv_fs(){
-	//
-#ifdef OS_USE_SEMIHOSTING
-	FILE *fd = fopen(FS_OUT, "w+");
-	fprintf(fd, "%d", FS);  // print first digit
-	fclose(fd);
-#endif
-}
-
-
-void test_file_writing(){
-#ifdef ex_log_msg
-	  char camessage[50] = "This is a message\nLine two";
-	#ifdef OS_USE_TRACE_SEMIHOSTING_DEBUG
-	  trace_printf("using trace_printf\n");
-	#endif
-	#ifdef OS_USE_SEMIHOSTING
-	  printf("Does this work? \n");
-	  printf("or this? \r\n");
-	  FILE *fd = fopen("C:\\STM32ToolChain\\Downloads\\junk.txt", "w+");
-	//  FILE *fd = fopen("C:/STM32ToolChain/Downloads/junk.txt", "w+");
-	  fwrite(camessage, sizeof(char), strlen(camessage), fd);
-	  fclose(fd);
-	#endif
-#endif
-}
-
-/**********************************************************************************************************************************************************************************************************************************
- *	FFT examples and support functions
- ***********************************************************************************************************************************************************************************************************************************/
-
-void fft_example(){
-//  This code is old. The functions do work, but you may need to pass in other arrays. Make sure the arrays are properly defined the so are the lengths.
-	// feel free to ask Nephi if you cannot get this to work. Please try your own arrays with each function first. Remember to match data types with what the functions need or you'll get unpredictable behavior.
-	#define SIG_LEN 279
-	uint16_t signal[SIG_LEN] = {3016,838,552,2424,3380,2303,1031,1532,3103,2785,725,947,3360,3289,1153,1314,2579,1778,1345,3089,3299,976,506,2674,3268,1604,1368,2881,2616,734,1074,3215,3254,1715,1472,1552,1276,2669,3916,1886,153,1940,3021,1711,2053,3151,1659,739,2407,2618,1488,2566,3220,1037,391,2610,3423,2346,1639,1176,1565,3048,2666,977,1995,3428,1434,274,2897,3903,1476,598,2018,2718,2747,2325,899,859,3083,3765,1773,575,1369,2492,3100,2732,1539,1059,1616,2208,2890,3148,1698,284,1501,3493,3138,1375,923,2194,3156,2046,645,1917,3789,2458,442,1561,2991,2001,1712,3032,2363,423,1312,3565,2988,1035,1461,2890,2101,798,2065,3698,2474,747,1333,2215,2244,3005,2965,746,367,2953,3403,1536,1840,2680,1253,1095,3034,2768,1415,2321,2510,696,1270,3643,3175,1244,1084,1689,2395,3132,2119,859,2243,3107,1088,975,3627,3244,456,850,3028,3008,2033,1519,1064,1967,3662,2852,564,705,2587,3277,2671,1667,941,1450,2565,2863,2615,2045,895,875,2841,3801,2096,579,1387,2915,2916,1453,993,2710,3499,1405,323,2409,3427,1836,1561,2651,1765,689,2419,3853,2070,479,1838,3076,1883,1159,2727,3342,1369,452,2140,3092,2455,2345,1859,507,1478,3889,3035,798,1584,2590,1408,1738,3386,2368,966,2108,2332,1065,2225,3833,2107,355,1474,2710,2812,2571,1444,974,2616,2921,1038,1625,3732,2240,0,1782,3814,2516,1114,1390,1875,2752,3275,1620,206,1813,3663,2979,1495,977,1374,2468,3152,2517,1663,1318,1205,2098,3568};
-	uint16_t rx_sig[BLOCK_LEN];
-	uint16_t tx_sig[BLOCK_LEN];
-	#define SIG_LEN 279
-	volatile uint16_t blockA[1024];
-	volatile uint16_t blockB[BLOCK_LEN];
-  //adc dac test
-  /*
-  arm_fill_q15(0, rx_sig, BLOCK_LEN);
-  arm_fill_q15(0, tx_sig, BLOCK_LEN);
-  uint16_t idx_loc = 250;
-  place_signal(tx_sig, BLOCK_LEN, signal, SIG_LEN, idx_loc);
-  */
-
-/*
-  // flip reference signal
-  uint16_t new_signal[SIG_LEN];
-  fliplr(signal, new_signal, SIG_LEN);
-
-  // prepare ADC signal
-  uint16_t ADC_LEN = BLOCK_LEN - SIG_LEN;
-  uint16_t blockTX[ADC_LEN];
-  arm_fill_q15(0, blockTX, ADC_LEN);
-  uint16_t idx_loc = 250;
-  place_signal(blockTX, ADC_LEN, signal, SIG_LEN, idx_loc);
-
-/*
-  // prepare arrays
-  uint16_t ref_sig_len = SIG_LEN + ADC_LEN;
-  uint16_t real_num_samples = BLOCK_LEN - 1 + 1;
-  uint16_t* pt_final_res[real_num_samples];
-  uint32_t cpx_num_samples = real_num_samples*2;
-  uint16_t* pt_ref_sig_cpx[cpx_num_samples];
-  uint16_t* pt_cap_sig_cpx[cpx_num_samples];
-  uint16_t* pt_res_fft[cpx_num_samples];
-  arm_fill_q15(0, pt_ref_sig_cpx, cpx_num_samples);
-  arm_fill_q15(0, pt_cap_sig_cpx, cpx_num_samples);
-  arm_fill_q15(0, pt_res_fft, cpx_num_samples);
-  arm_fill_q15(0, pt_final_res, real_num_samples);
-  copy_2butterfly(new_signal, SIG_LEN, pt_ref_sig_cpx);
-
-//  print_csv_data(pt_ref_sig_cpx, cpx_num_samples);  // test code
-
-  copy_2butterfly(blockTX, ADC_LEN, pt_cap_sig_cpx);
-//  print_csv_data(pt_cap_sig_cpx, cpx_num_samples);  // test code
-
-
-
-  // Perform FFT
-  uint8_t ifftFlag = 1;
-  uint8_t bitReverseFlag = 0;
-  arm_cfft_q15(&arm_cfft_sR_q15_len1024, pt_ref_sig_cpx, !ifftFlag, bitReverseFlag);
-//  print_csv_data(pt_ref_sig_cpx, cpx_num_samples);
-
-  arm_cfft_q15(&arm_cfft_sR_q15_len1024, pt_cap_sig_cpx, !ifftFlag, bitReverseFlag);
-//  print_csv_data(pt_cap_sig_cpx, cpx_num_samples);
-
-  // multiply results
-  arm_cmplx_mult_cmplx_q15(pt_ref_sig_cpx, pt_cap_sig_cpx, pt_res_fft, cpx_num_samples);
-
-  // do inverse FFT
-  arm_cfft_q15(&arm_cfft_sR_q15_len1024, pt_res_fft, ifftFlag, bitReverseFlag);
-//  print_csv_data(pt_res_fft, cpx_num_samples);
-
-  //convert to real
-  copy_frombutterfly(pt_final_res, real_num_samples, pt_res_fft);
-//  print_csv_data(pt_final_res, real_num_samples);
-
-*/
-  // view results
-//  volatile uint32_t* max_val;
-//  volatile uint32_t* max_idx;
-//  arm_max_q15(pt_final_res, real_num_samples, max_val, max_idx);
-//  printf("Max val: %d\n", *max_val);
-//  printf("Max idx: %d\n", *max_idx);
-//  print_csv_data(pt_final_res, real_num_samples);
-
-//
-//  uint16_t pt_sig[10] = {1,2,3,4,5,6,7,8,9,10};
-//  uint16_t new_sig[10] = {0,0,0,0,0,0,0,0,0,0};
-//  uint16_t blk[10] = {0,0,0,0,0,0,0,0,0,0};
-//
-//
-//  fliplr(pt_sig, new_sig, 10);
-//
-//
-//  fliplr(signal, new_signal, SIG_LEN);
-//  arm_fill_q15(0, blockA, BLOCK_LEN);
-//
-////  uint16_t idx_loc = 250;
-//  place_signal(blockTX, BLOCK_LEN, signal, SIG_LEN, idx_loc);
-//  place_signal(blockTX, BLOCK_LEN, pt_sig, 10, idx_loc);
-//
-//  uint16_t pt_resolved[2*BLOCK_LEN - 1];
-//  arm_fill_q15(0, pt_resolved, 2*BLOCK_LEN - 1);
-//  uint32_t res_size = 2*BLOCK_LEN - 1;
-//  volatile uint32_t* max_val;
-//  volatile uint32_t* max_idx;
-//
-////  arm_correlate_q15(new_sig, 10, blockTX, BLOCK_LEN, pt_resolved);
-//  arm_conv_q15(new_sig, 10, blockTX, BLOCK_LEN, pt_resolved);
-//
-//  arm_max_q15(pt_resolved, res_size, max_val, max_idx);
-//  printf("Max val: %d\n", *max_val);
-//  printf("Max idx: %d\n", *max_idx);
-//
-//
-//  print_csv_data(pt_resolved, 2*BLOCK_LEN - 1);
-  while(1){}
-}
-
-void copy_2butterfly(uint16_t* pt_real_array, uint16_t r_len, uint16_t* pt_cpx_array){
-	// converts a real array into a complex array. the cpx_array must be at least 2x the len of the real array
-	for (uint16_t i = 0; i < r_len; i++){
-		pt_cpx_array[2*i] = pt_real_array[i];
-	}
-}
-void copy_frombutterfly(uint16_t* pt_real_array, uint16_t r_len, uint16_t* pt_cpx_array){
-	// converts a complex array into a real array
-	for (uint16_t i = 0; i < r_len; i++){
-		pt_real_array[i] = pt_cpx_array[i*2];
-	}
-}
-void fliplr(uint16_t* ref_sig, uint16_t* new_sig, uint16_t sig_len){
-	// This function flips an array from left to right
-	for (uint16_t i = 0; i < sig_len; i++){
-		new_sig[sig_len - i - 1] = ref_sig[i]; // -1 for the fact that an array of len 5 has only idx 4.
-	}
-}
-void place_signal(uint16_t* pt_block, uint16_t block_len, uint16_t* pt_sig, uint16_t sig_len, uint16_t idx_loc){
-	// This function embeds an array inside another array starting at a given idx
-	// check, ensure that there is enough space to embed the signal, I did not do that for you. (overrun is possible)
-	// Tested
-	if (idx_loc + sig_len < block_len){
-		for (uint16_t i = 0; i < sig_len; i++){
-			pt_block[i+idx_loc] = pt_sig[i];
-		}
-	} else{
-		error();
-	}
-}
-
-
-
-
-
-
-
-
-/**********************************************************************************************************************************************************************************************************************************
- *	ERROR Handler Code
- ***********************************************************************************************************************************************************************************************************************************/
-
-void HAL_ADC_ErrorCallback(ADC_HandleTypeDef *hadc){
-#ifdef SHOW_ADC_ERRORS
-	HAL_GPIO_WritePin(GPIOB, LD3_Pin, GPIO_PIN_SET);
-	//	print_csv_data(rawValues, RecLen);  // put the correct array and len in here to see what was generated. Debug Code
-	HAL_ADC_Stop_IT(&hadc1);  // this will probably fix the overrun error so you can start ADC conversions again.
-	btn_pushed = 0;
-#endif
-}
-
-void HAL_DAC_ErrorCallbackCh1(DAC_HandleTypeDef *hdac){
-#ifdef SHOW_DAC_ERRORS
-	HAL_GPIO_WritePin(GPIOB, LD3_Pin, GPIO_PIN_SET);  // This happens, but with how things are reset, the system is working.
-	HAL_DAC_Stop_DMA(&hdac, DAC_CHANNEL_1);  // this function should clear the error
-#endif
-}
+/* USER CODE BEGIN 4 */
 
 void error(){
 	while(1){
@@ -951,6 +1113,8 @@ void error(){
 		//  Consider stepping back through the stack frame to find out why.
 	}
 }
+
+/* USER CODE END 4 */
 
 /**
   * @brief  This function is executed in case of error occurrence.
