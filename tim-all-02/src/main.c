@@ -151,14 +151,30 @@ int saving = 1;
 uint16_t buffer_1[512];
 uint16_t buffer_2[512];
 
+
 int main(void)
 {
-  fetch_matlab_input(&matlab_signal);
-  initialise_monitor_handles();
+//  fetch_matlab_input(&matlab_signal);
+//  initialise_monitor_handles();
   init_hardware();
-  HAL_ADC_Start_DMA(&hadc1, (uint32_t*)rawValues, rec_len);
+  //HAL_ADC_Start_DMA(&hadc1, (uint32_t*)rawValues, rec_len);
 
 //  struct SIG matlab_signal;
+
+ //Test Conv
+//    uint16_t o[5];
+//    arm_fill_q15(2, o, 5);
+//    HAL_GPIO_TogglePin(GPIOB, LD1_Pin);
+  	uint16_t  val = 2;
+    uint16_t ref[3] = {2, 5, 1};
+    uint16_t received[10] = {0,0,1,5,2,0,1,0,1,0};
+    volatile uint16_t res[3 + 10 - 1];
+    arm_fill_q15(val, res, 3 + 10 - 1);
+
+    arm_conv_q15(ref, 3, received, 10, res);
+    HAL_Delay(500);
+
+    arm_fill_q15(val, res, 3 + 10 - 1);
 
   // This is the main event loop.
   while (1)
@@ -868,3 +884,49 @@ void assert_failed(uint8_t* file, uint32_t line)
 
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
+
+
+/*
+   // test convolution with float
+  //Works with floats. If using uint_t or q15_t and converting to float it no longer works
+//  float32_t ref[4] = {1.0,1.0,1.0,1.0};
+//  q15_t received[10] = {0,0,0,0,1,1,1,1,0,0};
+//  float32_t res_f[10];
+//  arm_q15_to_float(received, res_f, 10);
+//  float32_t res[4 + 10 - 1];
+//  arm_fill_f32(val, res, 4 + 10 - 1);
+//
+//  arm_conv_f32(ref, 4, res_f, 10, res);
+//  HAL_Delay(500);
+//
+//  arm_fill_f32(val, res, 4 + 10 - 1);
+//
+//  arm_correlate_f32(ref, 4, res_f, 10, res);
+//  HAL_Delay(500);
+//
+//  arm_fill_f32(val, res, 4 + 10 - 1);
+
+  // test convolution with q_t
+  //does not work
+    q31_t ref[4] = {10,10,10,10};
+    q31_t received[10] = {0,0,0,0,10,10,10,10,0,0};
+    q31_t res[4 + 10 - 1];
+    arm_fill_q31(val, res, 4 + 10 - 1);
+
+    arm_conv_q31(ref, 4, received, 10, res);
+    HAL_Delay(500);
+
+    arm_fill_q31(val, res, 4 + 10 - 1);
+
+    arm_correlate_q31(ref, 4, received, 10, res);
+    HAL_Delay(500);
+
+    arm_fill_q31(val, res, 4 + 10 - 1);
+
+
+
+
+ */
+
+
+
